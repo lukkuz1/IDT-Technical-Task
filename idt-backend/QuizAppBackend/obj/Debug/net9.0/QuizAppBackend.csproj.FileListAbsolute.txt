@@ -35,3 +35,6 @@ C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\obj
 C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\obj\Debug\net9.0\QuizAppBackend.pdb
 C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\obj\Debug\net9.0\QuizAppBackend.genruntimeconfig.cache
 C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\obj\Debug\net9.0\ref\QuizAppBackend.dll
+C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Administrator\Desktop\IDT Technical Task\idt-backend\QuizAppBackend\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll

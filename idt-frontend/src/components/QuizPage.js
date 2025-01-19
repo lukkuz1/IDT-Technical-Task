@@ -1,117 +1,188 @@
-// src/components/QuizPage.js
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { Button, TextField, FormControlLabel, Checkbox, Radio, RadioGroup, FormControl, FormLabel, Container, Grid } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import {
+  Button,
+  TextField,
+  FormControlLabel,
+  Checkbox,
+  Radio,
+  RadioGroup,
+  FormControl,
+  FormLabel,
+  Container,
+  Typography,
+  Box,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 function QuizPage() {
   const [questions, setQuestions] = useState([]);
-  const [email, setEmail] = useState('');
-  const [answers, setAnswers] = useState([]);
-  const [score, setScore] = useState(0);
+  const [email, setEmail] = useState("");
+  const [answers, setAnswers] = useState({});
+  const [score, setScore] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch quiz questions from the backend
-    axios.get('http://localhost:5000/api/quiz')
-      .then(response => {
-        setQuestions(response.data);
+    axios
+      .get("http://localhost:5234/api/quiz")
+      .then((response) => {
+        console.log("Fetched Questions:", response.data);
+        if (response.data.$values && Array.isArray(response.data.$values)) {
+          setQuestions(response.data.$values);
+        } else {
+          console.error(
+            "Expected $values to be an array, but got:",
+            response.data
+          );
+        }
       })
-      .catch(error => {
-        console.error("There was an error fetching the quiz questions!", error);
+      .catch((error) => {
+        console.error("Error fetching quiz questions:", error);
       });
   }, []);
 
-  const handleAnswerChange = (questionId, optionId, isChecked) => {
-    setAnswers(prevAnswers => {
-      const updatedAnswers = [...prevAnswers];
-      const answerIndex = updatedAnswers.findIndex(ans => ans.questionId === questionId);
-      if (answerIndex > -1) {
-        updatedAnswers[answerIndex].selectedOptions = isChecked
-          ? [...updatedAnswers[answerIndex].selectedOptions, optionId]
-          : updatedAnswers[answerIndex].selectedOptions.filter(id => id !== optionId);
+  const handleAnswerChange = (questionId, value, isChecked = false) => {
+    setAnswers((prev) => {
+      const updatedAnswers = { ...prev };
+      if (!updatedAnswers[questionId]) updatedAnswers[questionId] = [];
+
+      if (typeof value === "string") {
+        updatedAnswers[questionId] = [value];
       } else {
-        updatedAnswers.push({ questionId, selectedOptions: isChecked ? [optionId] : [] });
+        if (isChecked) {
+          updatedAnswers[questionId].push(value);
+        } else {
+          updatedAnswers[questionId] = updatedAnswers[questionId].filter(
+            (v) => v !== value
+          );
+        }
       }
+
       return updatedAnswers;
     });
   };
 
   const handleSubmit = () => {
-    // Prepare the answer data to send to the backend
     const submitData = {
       email: email,
-      answers: answers.map(answer => ({
-        quizId: answer.questionId,
-        selectedOptions: answer.selectedOptions,
+      answers: Object.entries(answers).map(([questionId, selectedOptions]) => ({
+        quizId: parseInt(questionId),
+        selectedOptions,
+        textAnswer: selectedOptions[0] || null,
       })),
     };
 
-    axios.post('http://localhost:5000/api/quiz/submit', submitData)
-      .then(response => {
-        setScore(response.data.score); // Assume the response contains the score
-        alert('Quiz submitted successfully!');
+    console.log("Submit Data:", submitData);
+
+    axios
+      .post("http://localhost:5234/api/quiz/submit", submitData)
+      .then((response) => {
+        setScore(response.data.score);
+        alert("Quiz submitted successfully!");
       })
-      .catch(error => {
-        console.error("There was an error submitting the quiz!", error);
+      .catch((error) => {
+        console.error("Error submitting quiz:", error);
+        alert("Failed to submit quiz.");
       });
   };
 
   return (
     <Container>
-      <h2>Quiz Page</h2>
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <TextField
-            label="Enter your email"
-            type="email"
-            fullWidth
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </Grid>
-        {questions.map((question, index) => (
-          <Grid item xs={12} key={question.id}>
-            <FormControl component="fieldset">
-              <FormLabel component="legend">{question.question}</FormLabel>
-              {question.type === "Radio" && (
-                <RadioGroup
-                  onChange={(e) => handleAnswerChange(question.id, e.target.value, true)}
-                >
-                  {question.options.map((option) => (
-                    <FormControlLabel
-                      key={option.id}
-                      value={option.id}
-                      control={<Radio />}
-                      label={option.text}
-                    />
-                  ))}
-                </RadioGroup>
-              )}
-              {question.type === "Checkbox" && (
-                <div>
-                  {question.options.map((option) => (
-                    <FormControlLabel
-                      key={option.id}
-                      control={<Checkbox />}
-                      label={option.text}
-                      onChange={(e) => handleAnswerChange(question.id, option.id, e.target.checked)}
-                    />
-                  ))}
-                </div>
-              )}
-              {question.type === "Textbox" && (
-                <TextField
-                  label="Your answer"
-                  fullWidth
-                  onChange={(e) => handleAnswerChange(question.id, e.target.value, true)}
-                />
-              )}
-            </FormControl>
-          </Grid>
-        ))}
-        <Grid item xs={12}>
-          <Button variant="contained" onClick={handleSubmit}>Submit Quiz</Button>
-        </Grid>
-      </Grid>
+      <Typography variant="h4" gutterBottom>
+        Quiz Page
+      </Typography>
+
+      <Box mb={2}>
+        <TextField
+          label="Enter your email"
+          type="email"
+          fullWidth
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </Box>
+
+      {questions.map((question) => (
+        <Box key={question.id} mb={3}>
+          <FormControl component="fieldset" fullWidth>
+            <FormLabel component="legend">{question.question}</FormLabel>
+            {question.type === 0 && (
+              <RadioGroup
+                value={answers[question.id] || ""}
+                onChange={(e) =>
+                  handleAnswerChange(question.id, e.target.value)
+                }
+              >
+                {question.options.$values?.map((option) => (
+                  <FormControlLabel
+                    key={option.id}
+                    value={option.id}
+                    control={<Radio />}
+                    label={option.text}
+                  />
+                ))}
+              </RadioGroup>
+            )}
+            {question.type === 1 && (
+              <div>
+                {question.options.$values?.map((option) => (
+                  <FormControlLabel
+                    key={option.id}
+                    control={
+                      <Checkbox
+                        checked={
+                          answers[question.id]?.includes(option.id) || false
+                        }
+                        onChange={(e) =>
+                          handleAnswerChange(
+                            question.id,
+                            option.id,
+                            e.target.checked
+                          )
+                        }
+                      />
+                    }
+                    label={option.text}
+                  />
+                ))}
+              </div>
+            )}
+            {question.type === 2 && (
+              <TextField
+                label="Your answer"
+                fullWidth
+                value={answers[question.id] || ""}
+                onChange={(e) =>
+                  handleAnswerChange(question.id, e.target.value)
+                }
+              />
+            )}
+          </FormControl>
+        </Box>
+      ))}
+
+      <Box mb={3}>
+        <Button variant="contained" color="primary" onClick={handleSubmit}>
+          Submit Quiz
+        </Button>
+      </Box>
+
+      {score !== null && (
+        <Box mb={3}>
+          <Typography variant="h6">Your Score: {score}</Typography>
+        </Box>
+      )}
+
+      <Box mb={3}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => navigate("/highscores")}
+        >
+          View High Scores
+        </Button>
+      </Box>
     </Container>
   );
 }

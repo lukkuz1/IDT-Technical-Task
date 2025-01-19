@@ -1,30 +1,46 @@
 using Microsoft.EntityFrameworkCore;
 using QuizAppBackend.Data;
 using QuizAppBackend.Models;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
-// Register DbContext for in-memory database
 builder.Services.AddDbContext<QuizContext>(options =>
     options.UseInMemoryDatabase("QuizDb"));
 
-// Add controllers for the API
-builder.Services.AddControllers();
 
-// Add OpenAPI support (optional, for API documentation)
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add any other services, like if you'd like to add dependency injection, here
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
-// Seed quiz data (optional, if you want to pre-populate the database)
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<QuizContext>();
+    
+
+    context.Database.EnsureCreated();
+
     if (!context.Quizzes.Any())
     {
         context.Quizzes.AddRange(new Quiz[]
@@ -40,14 +56,29 @@ using (var scope = app.Services.CreateScope())
                     new Option { Text = "Berlin", IsCorrect = false }
                 }
             },
-            // Add more questions as needed
+            new Quiz
+            {
+                Question = "Select the colors in the French flag.",
+                Type = QuestionType.Checkbox,
+                Options = new List<Option>
+                {
+                    new Option { Text = "Blue", IsCorrect = true },
+                    new Option { Text = "White", IsCorrect = true },
+                    new Option { Text = "Red", IsCorrect = true },
+                    new Option { Text = "Green", IsCorrect = false }
+                }
+            },
+            new Quiz
+            {
+                Question = "What is the chemical symbol for water?",
+                Type = QuestionType.Textbox,
+                Options = new List<Option>()
+            }
         });
-
         context.SaveChanges();
     }
 }
 
-// Configure the HTTP request pipeline (for development, add Swagger)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -55,7 +86,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors();
 
-app.MapControllers(); // Map the controllers to their respective routes
+app.MapControllers();
 
 app.Run();

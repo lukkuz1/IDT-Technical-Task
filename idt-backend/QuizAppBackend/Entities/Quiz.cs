@@ -1,11 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+
 namespace QuizAppBackend.Models
 {
     public class Quiz
     {
+        [Key]
         public int Id { get; set; }
         public string Question { get; set; }
-        public QuestionType Type { get; set; } // Enum for question type: Radio, Checkbox, or Textbox
-        public List<Option> Options { get; set; } // For multiple choice questions
+        public QuestionType Type { get; set; }
+        public List<Option> Options { get; set; }
     }
 
     public enum QuestionType
