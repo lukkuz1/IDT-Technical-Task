@@ -1,50 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { Container, List, ListItem, ListItemText, Typography } from '@mui/material';
+import React from 'react';
+import { Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Paper } from '@mui/material';
+import useHighScores from '../hooks/useHighScores';
+
+
+const Medal = ({ position }) => {
+  const getMedalIcon = () => {
+    if (position === 1) return '🥇'; // Gold
+    if (position === 2) return '🥈'; // Silver
+    if (position === 3) return '🥉'; // Bronze
+    return '';
+  };
+
+  return <span>{getMedalIcon()}</span>;
+};
+
+
+const HighScoreRow = ({ index, score }) => {
+  return (
+    <TableRow>
+      <TableCell align="center">
+        <Medal position={index + 1} /> {index + 1}
+      </TableCell>
+      <TableCell align="center">{score.email}</TableCell>
+      <TableCell align="center">{score.score}</TableCell>
+      <TableCell align="center">{new Date(score.dateTime).toLocaleString()}</TableCell>
+    </TableRow>
+  );
+};
 
 function HighScorePage() {
-  const [highScores, setHighScores] = useState([]);
-
-  useEffect(() => {
-    axios.get('http://localhost:5234/api/highscores')
-      .then(response => {
-        if (Array.isArray(response.data)) {
-          setHighScores(response.data);
-        } else {
-          console.error('Unexpected response data structure:', response.data);
-        }
-      })
-      .catch(error => console.error("Error fetching high scores:", error));
-  }, []);
-
-  const getColorForPosition = (position) => {
-    if (position === 1) return 'gold';
-    if (position === 2) return 'silver';
-    if (position === 3) return 'bronze';
-    return 'inherit';
-  };
+  const highScores = useHighScores();
 
   return (
     <Container>
       <Typography variant="h4" gutterBottom>High Scores</Typography>
-      <List>
-        {Array.isArray(highScores) && highScores.length > 0 ? (
-          highScores.map((score, index) => (
-            <ListItem key={index}>
-              <ListItemText
-                primary={
-                  <span style={{ color: getColorForPosition(score.position) }}>
-                    {score.position}. {score.email} - {score.score}
-                  </span>
-                }
-                secondary={`Date: ${new Date(score.dateTime).toLocaleString()}`}
-              />
-            </ListItem>
-          ))
-        ) : (
-          <Typography>No high scores available.</Typography>
-        )}
-      </List>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell align="center">Position</TableCell>
+              <TableCell align="center">Email</TableCell>
+              <TableCell align="center">Score</TableCell>
+              <TableCell align="center">Date</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {highScores.length > 0 ? (
+              highScores.map((score, index) => (
+                <HighScoreRow key={index} index={index} score={score} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  <Typography>No high scores available.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Container>
   );
 }

@@ -18,18 +18,20 @@ namespace QuizAppBackend.Controllers
 
         // GET: api/highscores
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetTopScores()
+        public async Task<ActionResult<IEnumerable<object>>> GetTopScores(int page = 1, int pageSize = 10)
         {
-            var topScores = await _context.HighScores
+            var highScores = await _context.HighScores
                 .OrderByDescending(h => h.Score)
-                .Take(10)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
-            var result = topScores.Select((score, index) => new
+
+            var result = highScores.Select((score, index) => new
             {
-                Position = index + 1,
-                Email = score.Email,
-                Score = score.Score,
-                DateTime = score.DateTime,
+                Position = index + 1 + (page - 1) * pageSize,
+                score.Email,
+                score.Score,
+                score.DateTime,
                 Color = index == 0 ? "Gold" : index == 1 ? "Silver" : index == 2 ? "Bronze" : null
             });
 

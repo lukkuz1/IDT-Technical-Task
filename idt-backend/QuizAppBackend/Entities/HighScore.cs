@@ -10,7 +10,6 @@ namespace QuizAppBackend.Models
     {
         [Key]
         public int Id { get; set; }
-        public int Position { get; set; }
         public string Email { get; set; }
         public int Score { get; set; }
         public DateTime DateTime { get; set; }

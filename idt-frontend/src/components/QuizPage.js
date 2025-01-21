@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React from "react";
 import {
   Button,
   TextField,
@@ -14,77 +13,45 @@ import {
   Box,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import useQuiz from "../hooks/useQuiz";
+
+
+const RadioQuestion = ({ question, value, onChange }) => (
+  <RadioGroup value={value} onChange={onChange}>
+    {question.options.map((option) => (
+      <FormControlLabel key={option.id} value={option.id} control={<Radio />} label={option.text} />
+    ))}
+  </RadioGroup>
+);
+
+const CheckboxQuestion = ({ question, value, onChange }) => (
+  <div>
+    {question.options.map((option) => (
+      <FormControlLabel
+        key={option.id}
+        control={<Checkbox checked={value.includes(option.id)} onChange={(e) => onChange(option.id, e.target.checked)} />}
+        label={option.text}
+      />
+    ))}
+  </div>
+);
+
+const TextboxQuestion = ({ value, onChange }) => (
+  <TextField label="Your answer" fullWidth value={value} onChange={onChange} />
+);
 
 function QuizPage() {
-  const [questions, setQuestions] = useState([]);
-  const [email, setEmail] = useState("");
-  const [answers, setAnswers] = useState({});
-  const [score, setScore] = useState(null);
+  const {
+    questions,
+    email,
+    setEmail,
+    answers,
+    handleAnswerChange,
+    score,
+    handleSubmit,
+  } = useQuiz();
+  
   const navigate = useNavigate();
-
-  useEffect(() => {
-    axios
-      .get("http://localhost:5234/api/quiz")
-      .then((response) => {
-        console.log("Fetched Questions:", response.data);
-        if (response.data.$values && Array.isArray(response.data.$values)) {
-          setQuestions(response.data.$values);
-        } else {
-          console.error(
-            "Expected $values to be an array, but got:",
-            response.data
-          );
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching quiz questions:", error);
-      });
-  }, []);
-
-  const handleAnswerChange = (questionId, value, isChecked = false) => {
-    setAnswers((prev) => {
-      const updatedAnswers = { ...prev };
-      if (!updatedAnswers[questionId]) updatedAnswers[questionId] = [];
-
-      if (typeof value === "string") {
-        updatedAnswers[questionId] = [value];
-      } else {
-        if (isChecked) {
-          updatedAnswers[questionId].push(value);
-        } else {
-          updatedAnswers[questionId] = updatedAnswers[questionId].filter(
-            (v) => v !== value
-          );
-        }
-      }
-
-      return updatedAnswers;
-    });
-  };
-
-  const handleSubmit = () => {
-    const submitData = {
-      email: email,
-      answers: Object.entries(answers).map(([questionId, selectedOptions]) => ({
-        quizId: parseInt(questionId),
-        selectedOptions,
-        textAnswer: selectedOptions[0] || null,
-      })),
-    };
-
-    console.log("Submit Data:", submitData);
-
-    axios
-      .post("http://localhost:5234/api/quiz/submit", submitData)
-      .then((response) => {
-        setScore(response.data.score);
-        alert("Quiz submitted successfully!");
-      })
-      .catch((error) => {
-        console.error("Error submitting quiz:", error);
-        alert("Failed to submit quiz.");
-      });
-  };
 
   return (
     <Container>
@@ -107,55 +74,27 @@ function QuizPage() {
         <Box key={question.id} mb={3}>
           <FormControl component="fieldset" fullWidth>
             <FormLabel component="legend">{question.question}</FormLabel>
+
             {question.type === 0 && (
-              <RadioGroup
-                value={answers[question.id] || ""}
-                onChange={(e) =>
-                  handleAnswerChange(question.id, e.target.value)
-                }
-              >
-                {question.options.$values?.map((option) => (
-                  <FormControlLabel
-                    key={option.id}
-                    value={option.id}
-                    control={<Radio />}
-                    label={option.text}
-                  />
-                ))}
-              </RadioGroup>
+              <RadioQuestion
+                question={question}
+                value={answers[question.id]?.selectedOptions[0]?.id || ""}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+              />
             )}
+
             {question.type === 1 && (
-              <div>
-                {question.options.$values?.map((option) => (
-                  <FormControlLabel
-                    key={option.id}
-                    control={
-                      <Checkbox
-                        checked={
-                          answers[question.id]?.includes(option.id) || false
-                        }
-                        onChange={(e) =>
-                          handleAnswerChange(
-                            question.id,
-                            option.id,
-                            e.target.checked
-                          )
-                        }
-                      />
-                    }
-                    label={option.text}
-                  />
-                ))}
-              </div>
+              <CheckboxQuestion
+                question={question}
+                value={answers[question.id]?.selectedOptions.map((o) => o.id) || []}
+                onChange={(value, isChecked) => handleAnswerChange(question.id, value, isChecked)}
+              />
             )}
+
             {question.type === 2 && (
-              <TextField
-                label="Your answer"
-                fullWidth
-                value={answers[question.id] || ""}
-                onChange={(e) =>
-                  handleAnswerChange(question.id, e.target.value)
-                }
+              <TextboxQuestion
+                value={answers[question.id]?.textAnswer || ""}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
               />
             )}
           </FormControl>
@@ -175,11 +114,7 @@ function QuizPage() {
       )}
 
       <Box mb={3}>
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={() => navigate("/highscores")}
-        >
+        <Button variant="contained" color="secondary" onClick={() => navigate("/highscores")}>
           View High Scores
         </Button>
       </Box>

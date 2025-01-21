@@ -13,6 +13,7 @@ namespace QuizAppBackend.Models
         public string Question { get; set; }
         public QuestionType Type { get; set; }
         public List<Option> Options { get; set; }
+        public string? CorrectAnswer { get; set; }
     }
 
     public enum QuestionType

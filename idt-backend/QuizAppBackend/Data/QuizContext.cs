@@ -12,5 +12,6 @@ namespace QuizAppBackend.Data
         public DbSet<Quiz> Quizzes { get; set; }
         public DbSet<Answer> Answers { get; set; }
         public DbSet<HighScore> HighScores { get; set; }
+        public DbSet<Option> Options { get; set; }
     }
 }

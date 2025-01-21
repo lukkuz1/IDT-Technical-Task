@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuizAppBackend.Data;
 using QuizAppBackend.Models;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace QuizAppBackend.Controllers
 {
@@ -20,53 +22,69 @@ namespace QuizAppBackend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Quiz>>> GetQuizzes()
         {
-            return await _context.Quizzes.Include(q => q.Options).ToListAsync();
+            var quizzes = await _context.Quizzes
+                .Include(q => q.Options)
+                .ToListAsync();
+            return Ok(quizzes);
         }
 
-        // GET: api/quiz/{id}
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Quiz>> GetQuiz(int id)
-        {
-            var quiz = await _context.Quizzes.Include(q => q.Options).FirstOrDefaultAsync(q => q.Id == id);
-
-            if (quiz == null)
-            {
-                return NotFound();
-            }
-
-            return quiz;
-        }
-
-        // POST: api/quiz/submit
-        [HttpPost("submit")]
+        // POST: api/quiz
+        [HttpPost]
         public async Task<ActionResult<Answer>> SubmitAnswer(Answer answer)
         {
             if (answer == null || string.IsNullOrEmpty(answer.Email))
             {
-                return BadRequest("Invalid answer or email.");
+                return BadRequest("Invalid answer or missing email.");
             }
-            answer.Score = CalculateScore(answer);
-            _context.Answers.Add(answer);
-            await _context.SaveChangesAsync();
-            await UpdateHighScores(answer);
-            return CreatedAtAction(nameof(GetQuizzes), new { id = answer.Id }, answer);
-        }
 
-        private int CalculateScore(Answer answer)
-        {
-            int score = 0;
+            if (answer.SelectedOptions == null || !answer.SelectedOptions.Any())
+            {
+                return BadRequest("No options selected.");
+            }
 
-            var quiz = _context.Quizzes.Include(q => q.Options).FirstOrDefault(q => q.Id == answer.QuizId);
+
+            var firstOption = await _context.Options
+                .AsNoTracking()  // Prevents tracking of this entity initially
+                .Where(o => o.Id == answer.SelectedOptions.First().Id)
+                .FirstOrDefaultAsync();
+
+            if (firstOption == null)
+            {
+                return BadRequest("Selected option not found.");
+            }
+
+            _context.Attach(firstOption);
+
+
+            var quiz = await _context.Quizzes
+                .Include(q => q.Options)
+                .FirstOrDefaultAsync(q => q.Id == firstOption.QuizId);
 
             if (quiz == null)
             {
-                return score;
+                return NotFound("Quiz not found.");
             }
+
+
+            answer.Score = CalculateScore(answer, quiz);
+
+            _context.Answers.Add(answer);
+            await _context.SaveChangesAsync();
+
+            await UpdateHighScores(answer);
+
+
+            return Ok(answer);
+        }
+
+        private int CalculateScore(Answer answer, Quiz quiz)
+        {
+            int score = 0;
 
             switch (quiz.Type)
             {
                 case QuestionType.Radio:
-                    if (answer.SelectedOptions.Count == 1 && quiz.Options.FirstOrDefault(o => o.Id == answer.SelectedOptions[0].Id)?.IsCorrect == true)
+                    if (answer.SelectedOptions.Count == 1 && quiz.Options.Any(o => o.Id == answer.SelectedOptions[0].Id && o.IsCorrect))
                     {
                         score += 100;
                     }
@@ -74,15 +92,15 @@ namespace QuizAppBackend.Controllers
 
                 case QuestionType.Checkbox:
                     int correctCount = quiz.Options.Count(o => o.IsCorrect);
-                    int selectedCorrect = answer.SelectedOptions.Count(o => quiz.Options.FirstOrDefault(option => option.Id == o.Id)?.IsCorrect == true);
+                    int selectedCorrect = answer.SelectedOptions.Count(o => quiz.Options.Any(option => option.Id == o.Id && option.IsCorrect));
                     if (correctCount > 0)
                     {
-                        score += (100 / correctCount) * selectedCorrect;
+                        score += 100 / correctCount * selectedCorrect;
                     }
                     break;
 
                 case QuestionType.Textbox:
-                    if (!string.IsNullOrEmpty(answer.TextAnswer) && string.Equals(answer.TextAnswer, quiz.Question, StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrWhiteSpace(answer.TextAnswer) && string.Equals(answer.TextAnswer.Trim(), quiz.CorrectAnswer, StringComparison.OrdinalIgnoreCase))
                     {
                         score += 100;
                     }
@@ -105,12 +123,18 @@ namespace QuizAppBackend.Controllers
                     Score = answer.Score,
                     DateTime = DateTime.UtcNow
                 };
+
+
                 _context.HighScores.Add(newHighScore);
+
+
                 if (highScores.Count >= 10)
                 {
                     var lowestHighScore = highScores.Last();
                     _context.HighScores.Remove(lowestHighScore);
                 }
+
+
                 await _context.SaveChangesAsync();
             }
         }
